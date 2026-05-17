@@ -145,6 +145,7 @@ Funcion carac <- DecodificarAscii(codigo)
 	
 FinFuncion
 
+
 Funcion ptr <- asignar_espacio_memoria_car(mensaje, longitudmensaje, memoria)
 	Definir Carac Como Entero
 	
@@ -193,6 +194,17 @@ Funcion ptr <- asignar_espacio_memoria_int(mensaje, memoria)
 		SiNo
 			ioffset <- ioffset + 1
 		FinSi
+	FinMientras
+FinFuncion
+
+// Label es una seccion de codigo, si seccion1 hace un jmp a seccion2 ahora se ejecutara desde seccion2 sin poder regresar a
+// no ser que sea por rtn
+
+Funcion labels <- ObtenerLabels(tokens)
+	termino = Falso
+	i<-1
+	Mientras termino = Falso Hacer
+		i<-1
 	FinMientras
 FinFuncion
 
@@ -283,6 +295,7 @@ Algoritmo CPU
 	Dimensionar pointers[VARIABLES_CONST,2]
 	
 	reiniciomemoria(MEMORIA_CONST, VARIABLES_CONST, MAXINSTRUCIONES_CONST, memoria, pointers, instruccion)
+
 	
 	
     lineas[1] <- ";" // OBLIGATORIO NO TOCAR
@@ -293,7 +306,7 @@ Algoritmo CPU
     lineas[3] <- "msg db {Hola Mundo}, 0;"
     lineas[4] <- "msg_len equ msg;"
     lineas[5] <- "section .text;"
-	lineas[6] <- "global _start:;"
+	lineas[6] <- "global _start;"
     lineas[7] <- "_start:;"
     lineas[8] <- "mov eax, 4;"
     lineas[9] <- "mov ebx, 1;"
@@ -307,8 +320,15 @@ Algoritmo CPU
     cantidad <- Tokenizar(lineas, tokens, nlineas)
 	nlineasReal = Numero_Lineas(tokens, cantidad)
 	
+	// aca va la funcion de labels
+	
 	
 	// PRUEBAS
+	
+	
+	para i<-1 Hasta MEMORIA_CONST/2 Hacer
+		Escribir tokens[i]
+	FinPara
 	
 	
 	//prueba1 = asignar_espacio_memoria("hola", 4, memoria)
@@ -380,7 +400,7 @@ Algoritmo CPU
 		si typesection = 1 Entonces
 			segun instruccion[1] Hacer
 				"global":
-					rip = 
+					rip = "1"
 				"mov": 
 					indice <- Obtener_Registro(instruccion[2])
 					
