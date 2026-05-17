@@ -136,7 +136,7 @@ Funcion caracter <- DecodificarAscii(codigo)
 	
 FinFuncion
 
-Funcion ptr <- asignar_espacio_memoria(mensaje, longitudmensaje, memoria)
+Funcion ptr <- asignar_espacio_memoria_car(mensaje, longitudmensaje, memoria)
 	Definir Carac Como Entero
 	
 	encontrado = Falso
@@ -165,7 +165,56 @@ Funcion ptr <- asignar_espacio_memoria(mensaje, longitudmensaje, memoria)
 	FinMientras
 FinFuncion
 
+Funcion ptr <- asignar_espacio_memoria_int(mensaje, memoria)
+	Definir Carac Como Entero
+	
+	encontrado = Falso
+	ioffset <- 1
+	Mientras encontrado = Falso Hacer
+		si memoria[ioffset,2] = 0  Entonces
+			ptr <- ioffset
+			encontrado = Verdadero
+			memoria[ioffset,1] = mensaje
+			memoria[ioffset,2] = 1
+		FinSi
+	FinMientras
+FinFuncion
+
+Funcion reiniciomemoria(MEMORIA_CONST, VARIABLES_CONST, MAXINSTRUCIONES_CONST, memoria, pointers, instruccion)
+	para i<-1 Hasta MEMORIA_CONST Hacer
+		memoria[i,1] = 0
+		memoria[i,2] = 0
+	FinPara
+	
+	para i<-1 Hasta VARIABLES_CONST Hacer
+		pointers[i,1] = "0"
+		pointers[i,2] = 0
+	FinPara
+	
+	para i<-1 Hasta MAXINSTRUCIONES_CONST Hacer
+		instruccion[i] = "0"
+	FinPara
+FinFuncion
+
+Funcion asignarvariable(variable, puntero, pointers)
+	encontrado = Falso
+	i<-1
+	Mientras encontrado = Falso Hacer
+		si pointers[i,2] = 0 Entonces
+			pointers[i,1] = variable
+			pointers[i,2] = puntero
+		FinSi
+	Fin Mientras
+FinFuncion
+
 Algoritmo CPU
+	
+	// Configuracion de la cpu
+	
+	MEMORIA_CONST = 1024
+	VARIABLES_CONST = 64
+	MAXINSTRUCIONES_CONST = 6
+	
 	// REGISTROS:
 	// eax = syscall
 	// ebx = 1° argumento
@@ -179,7 +228,7 @@ Algoritmo CPU
 	Dimension registros[4]
 	
     Definir memoria Como Entero
-    Dimension memoria[1024,2]
+    Dimension memoria[MEMORIA_CONST,2]
 	
     Definir lineas, tokens, instruccion Como Cadena
     Definir cantidad, i, nlineas, tam Como Entero
@@ -195,11 +244,14 @@ Algoritmo CPU
 	typesection = 0
 	
     Dimension lineas[nlineas]
-    Dimension tokens[300]
-    Dimension instruccion[10]
+    Dimension tokens[MEMORIA_CONST/2]
+    Dimension instruccion[MAXINSTRUCIONES_CONST]
 	
 	// Asigna el punteor de cada variable
-	Dimensionar pointers[64,64]
+	Dimensionar pointers[VARIABLES_CONST,2]
+	
+	reiniciomemoria(MEMORIA_CONST, VARIABLES_CONST, MAXINSTRUCIONES_CONST, memoria, pointers, instruccion)
+	
 	
     lineas[1] <- ";" // OBLIGATORIO NO TOCAR
 	
@@ -226,13 +278,13 @@ Algoritmo CPU
 	// PRUEBAS
 	
 	
-	prueba1 = asignar_espacio_memoria("hola", 4, memoria)
+	//prueba1 = asignar_espacio_memoria("hola", 4, memoria)
 	
-	para i<-0 Hasta 4 Hacer
-		Escribir memoria[prueba1+i,1]
-		prueba2 <- DecodificarAscii(memoria[prueba1+i,1])
-		Escribir prueba2
-	FinPara
+	//para i<-0 Hasta 4 Hacer
+	//	Escribir memoria[prueba1+i,1]
+	//	prueba2 <- DecodificarAscii(memoria[prueba1+i,1])
+	//	Escribir prueba2
+	//FinPara
 	
 	
 	
@@ -245,7 +297,11 @@ Algoritmo CPU
 		si typesection = 2 Entonces
 			Segun instruccion[2] Hacer
 				"db":
-					//puntero = asignar_espacio_memoria()
+					puntero = asignar_espacio_memoria_car(instruccion[3], Longitud(instruccion[3]), memoria)
+					asignarvariable(instruccion[1],puntero,pointers)
+				"dw":
+					puntero = asignar_espacio_memoria_int(instruccion[3], memoria)
+					asignarvariable(instruccion[1],puntero,pointers)
 			FinSegun
 		FinSi
 		
