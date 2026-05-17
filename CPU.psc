@@ -250,9 +250,12 @@ Algoritmo CPU
 	// ecx = 2° argumento
 	// edx = 3° argumento
 	
+	// rip = puntero de inicio de ejecucion
 	
-	// eip = seguimiento de instrucciones
 	
+	// rip = seguimiento de instrucciones
+	
+	Definir rip como cadena
     Definir registros, eip Como Entero
 	Dimension registros[4]
 	
@@ -286,13 +289,14 @@ Algoritmo CPU
 	
 	// CODIGO ASSM (linux)
 	
-    lineas[2] <- ".section .data;"
+    lineas[2] <- "section .data;"
     lineas[3] <- "msg db {Hola Mundo}, 0;"
-    lineas[4] <- "msg_len equ msg"
-    lineas[5] <- ".section .text;"
-    lineas[6] <- "_start:;"
-    lineas[7] <- "mov eax, 4;"
-    lineas[8] <- "mov ebx, 1;"
+    lineas[4] <- "msg_len equ msg;"
+    lineas[5] <- "section .text;"
+	lineas[6] <- "global _start:;"
+    lineas[7] <- "_start:;"
+    lineas[8] <- "mov eax, 4;"
+    lineas[9] <- "mov ebx, 1;"
     //lineas[9] <- "mov ecx, msg;"
     //lineas[10] <- "mov edx, len;"
     lineas[11] <- "int 0x80;"
@@ -321,6 +325,8 @@ Algoritmo CPU
 	
 	para eip <- 1 Hasta nlineasReal Hacer
 		Separar_Instruccion(tokens, instruccion, eip, cantidad)
+		
+		Escribir instruccion[1]+ " " + instruccion[2] + " " + instruccion[3]
 		
 		si typesection = 2 Entonces
 			
@@ -366,7 +372,6 @@ Algoritmo CPU
 					FinMientras
 					
 					longit = auxiliar1 - 1
-					Escribir longit
 					puntero = asignar_espacio_memoria_int(longit, memoria)
 					asignarvariable(instruccion[1],ConvertirATexto(puntero),pointers)
 			FinSegun
@@ -374,6 +379,8 @@ Algoritmo CPU
 		
 		si typesection = 1 Entonces
 			segun instruccion[1] Hacer
+				"global":
+					rip = 
 				"mov": 
 					indice <- Obtener_Registro(instruccion[2])
 					
@@ -383,7 +390,7 @@ Algoritmo CPU
 			FinSegun
 		FinSi
 		
-		si instruccion[1] = ".section" Entonces
+		si instruccion[1] = "section" Entonces
 				si instruccion[2] = ".data" Entonces
 					typesection = 2
 				FinSi
