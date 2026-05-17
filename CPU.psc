@@ -1,46 +1,55 @@
 Funcion cantidad <- Tokenizar(lineas, tokens, nlineas)
-	
-    Definir i, k, j Como Entero
-    Definir buffer, caracter Como Cadena
-	
+    Definir i,k,j Como Entero
+    Definir buffer,caracter Como Cadena
+    Definir enBloque Como Logico
     j <- 1
+    enBloque <- Falso
 	
     Para k <- 1 Hasta nlineas
-        
         buffer <- ""
 		
         Para i <- 1 Hasta Longitud(lineas[k])
-            caracter <- Subcadena(lineas[k], i, i)
+            caracter <- Subcadena(lineas[k],i,i)
 			
-            Si caracter <> " " Y caracter <> "," Y caracter <> ";" Entonces
-                buffer <- buffer + caracter
+            Si caracter = "{" Entonces
+                enBloque <- Verdadero
+                buffer <- ""
             Sino
-                
-                Si buffer <> "" Entonces
-                    tokens[j] <- buffer
-                    j <- j + 1
-                    buffer <- ""
-                    
+                Si caracter = "}" Entonces
+                    enBloque <- Falso
+                    Si buffer <> "" Entonces
+                        tokens[j] <- buffer
+                        j <- j + 1
+                        buffer <- ""
+                    FinSi
+                Sino
+                    Si enBloque Entonces
+                        buffer <- buffer + caracter
+                    Sino
+                        Si caracter <> " " Y caracter <> "," Y caracter <> ";" Entonces
+                            buffer <- buffer + caracter
+                        Sino
+                            Si buffer <> "" Entonces
+                                tokens[j] <- buffer
+                                j <- j + 1
+                                buffer <- ""
+                            FinSi
+                            Si caracter = ";" Entonces
+                                tokens[j] <- ";"
+                                j <- j + 1
+                            FinSi
+                        FinSi
+                    FinSi
                 FinSi
-                
-                Si caracter = ";" Entonces
-                    tokens[j] <- ";"
-                    j <- j + 1
-                FinSi
-                
             FinSi
 			
         FinPara
-		
         Si buffer <> "" Entonces
-            
             tokens[j] <- buffer
             j <- j + 1
-            
         FinSi
 		
     FinPara
-	
     cantidad <- j - 1
 	
 FinFuncion
@@ -122,16 +131,16 @@ Funcion codigo <- CodificarAscii(caracter)
 FinFuncion
 
 
-Funcion caracter <- DecodificarAscii(codigo)
+Funcion carac <- DecodificarAscii(codigo)
 	
 	Definir letras Como Cadena
 	
 	letras <- " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 	
 	Si codigo >= 32 Y codigo <= Longitud(letras)+31 Entonces
-		caracter <- Subcadena(letras, codigo-31, codigo-31)
+		carac <- Subcadena(letras, codigo-31, codigo-31)
 	SiNo
-		caracter <- ""
+		carac <- ""
 	FinSi
 	
 FinFuncion
@@ -142,9 +151,10 @@ Funcion ptr <- asignar_espacio_memoria_car(mensaje, longitudmensaje, memoria)
 	encontrado = Falso
 	ioffset <- 1
 	Mientras encontrado = Falso Hacer
+		valido = 0
 		si memoria[ioffset,2] = 0  Entonces
 			para l<-1 Hasta longitudmensaje Hacer
-				si l = longitudmensaje Entonces
+				si l = longitudmensaje y valido = longitudmensaje - 1 Entonces
 					encontrado = Verdadero
 					ptr <- ioffset
 					
@@ -152,7 +162,6 @@ Funcion ptr <- asignar_espacio_memoria_car(mensaje, longitudmensaje, memoria)
 						si k = longitudmensaje Entonces
 							memoria[ptr+k, 1] = 0
 							memoria[ptr+k, 2] = 1
-							wa<-1
 						SiNo
 							Carac <- CodificarAscii(Subcadena(mensaje, k+1,k+1))
 							memoria[ptr+k, 1] = carac
@@ -160,14 +169,19 @@ Funcion ptr <- asignar_espacio_memoria_car(mensaje, longitudmensaje, memoria)
 						FinSi
 					FinPara
 				FinSi
+				si memoria[ioffset+l,2] = 0 y valido <> -1 Entonces
+					valido = valido + 1
+				SiNo
+					valido = -1
+				FinSi
+				
 			FinPara
 		FinSi
+		ioffset <- ioffset + 1
 	FinMientras
 FinFuncion
 
-Funcion ptr <- asignar_espacio_memoria_int(mensaje, memoria)
-	Definir Carac Como Entero
-	
+Funcion ptr <- asignar_espacio_memoria_int(mensaje, memoria)	
 	encontrado = Falso
 	ioffset <- 1
 	Mientras encontrado = Falso Hacer
@@ -176,19 +190,21 @@ Funcion ptr <- asignar_espacio_memoria_int(mensaje, memoria)
 			encontrado = Verdadero
 			memoria[ioffset,1] = mensaje
 			memoria[ioffset,2] = 1
+		SiNo
+			ioffset <- ioffset + 1
 		FinSi
 	FinMientras
 FinFuncion
 
 Funcion reiniciomemoria(MEMORIA_CONST, VARIABLES_CONST, MAXINSTRUCIONES_CONST, memoria, pointers, instruccion)
-	para i<-1 Hasta MEMORIA_CONST Hacer
-		memoria[i,1] = 0
-		memoria[i,2] = 0
-	FinPara
+	//para i<-1 Hasta MEMORIA_CONST Hacer
+	//	memoria[i,1] = 0
+	//	memoria[i,2] = 0
+	//FinPara
 	
 	para i<-1 Hasta VARIABLES_CONST Hacer
 		pointers[i,1] = "0"
-		pointers[i,2] = 0
+		pointers[i,2] = "0"
 	FinPara
 	
 	para i<-1 Hasta MAXINSTRUCIONES_CONST Hacer
@@ -200,13 +216,26 @@ Funcion asignarvariable(variable, puntero, pointers)
 	encontrado = Falso
 	i<-1
 	Mientras encontrado = Falso Hacer
-		si pointers[i,2] = 0 Entonces
+		si pointers[i,2] = "0" Entonces
 			pointers[i,1] = variable
 			pointers[i,2] = puntero
+			encontrado = Verdadero
 		FinSi
+		i<-i+1
 	Fin Mientras
 FinFuncion
 
+Funcion ptr <- BuscarPunteroVariable(variable, pointers)
+	Encontrado = Falso
+	ioffset <- 1
+	Mientras encontrado = Falso
+		si pointers[ioffset,1] = variable Entonces
+			ptr <- ConvertirANumero(pointers[ioffset,2])
+			Encontrado = Verdadero
+		FinSi
+		ioffset <- ioffset + 1
+	FinMientras
+FinFuncion
 Algoritmo CPU
 	
 	// Configuracion de la cpu
@@ -230,7 +259,7 @@ Algoritmo CPU
     Definir memoria Como Entero
     Dimension memoria[MEMORIA_CONST,2]
 	
-    Definir lineas, tokens, instruccion Como Cadena
+    Definir lineas, tokens, instruccion, pointers Como Cadena
     Definir cantidad, i, nlineas, tam Como Entero
 	
     nlineas <- 14
@@ -258,8 +287,8 @@ Algoritmo CPU
 	// CODIGO ASSM (linux)
 	
     lineas[2] <- ".section .data;"
-    lineas[3] <- "msg db HolaMundo, 0;"
-    lineas[4] <- "len db 11;"
+    lineas[3] <- "msg db {Hola Mundo}, 0;"
+    lineas[4] <- "msg_len equ msg"
     lineas[5] <- ".section .text;"
     lineas[6] <- "_start:;"
     lineas[7] <- "mov eax, 4;"
@@ -292,16 +321,54 @@ Algoritmo CPU
 	
 	para eip <- 1 Hasta nlineasReal Hacer
 		Separar_Instruccion(tokens, instruccion, eip, cantidad)
-		Escribir instruccion[1]
 		
 		si typesection = 2 Entonces
+			
+			
+			// Instrucciones posibles
+			
+			// db = Strings
+			// dw, dq y dt ints,
+			// equ ver el tamaño de una variable
+			
+			// msg db hola mundo, 0 / significa en msg define hola mundo, acabando con un 0
+			// 0 = fin de una string
+			// 1 = salto de linea
+			
+			
 			Segun instruccion[2] Hacer
 				"db":
 					puntero = asignar_espacio_memoria_car(instruccion[3], Longitud(instruccion[3]), memoria)
-					asignarvariable(instruccion[1],puntero,pointers)
+					asignarvariable(instruccion[1],ConvertirATexto(puntero),pointers)
 				"dw":
 					puntero = asignar_espacio_memoria_int(instruccion[3], memoria)
-					asignarvariable(instruccion[1],puntero,pointers)
+					asignarvariable(instruccion[1],ConvertirATexto(puntero),pointers)
+				"dd":
+					puntero = asignar_espacio_memoria_int(instruccion[3], memoria)
+					asignarvariable(instruccion[1],ConvertirATexto(puntero),pointers)
+				"dq":
+					puntero = asignar_espacio_memoria_int(instruccion[3], memoria)
+					asignarvariable(instruccion[1],ConvertirATexto(puntero),pointers)
+				"dt":
+					puntero = asignar_espacio_memoria_car(instruccion[3], Longitud(instruccion[3]), memoria)
+					asignarvariable(instruccion[1],ConvertirATexto(puntero),pointers)
+				"equ":
+					
+					puntero_variable = BuscarPunteroVariable(instruccion[3], pointers)
+					
+					final = Falso
+					auxiliar1 = 0
+					Mientras  final = Falso Hacer
+						si memoria[puntero_variable+auxiliar1,1] = 0 o memoria[puntero_variable+auxiliar1,1] = 1 Entonces
+							final = Verdadero
+						FinSi
+						auxiliar1 <- auxiliar1 + 1
+					FinMientras
+					
+					longit = auxiliar1 - 1
+					Escribir longit
+					puntero = asignar_espacio_memoria_int(longit, memoria)
+					asignarvariable(instruccion[1],ConvertirATexto(puntero),pointers)
 			FinSegun
 		FinSi
 		
@@ -320,21 +387,16 @@ Algoritmo CPU
 				si instruccion[2] = ".data" Entonces
 					typesection = 2
 				FinSi
-				si instruccion[2] = ".text"
+				si instruccion[2] = ".text" Entonces
 					typesection = 1
 				FinSi
 		FinSi
 		
 		
-		para i<-1 Hasta 10 Hacer
+		para i<-1 Hasta 6 Hacer
 			instruccion[i] = ""
 		FinPara
 	FinPara
-	
-	
-	
-	
-	
 	
 	
 	// PRUEBAS
