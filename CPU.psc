@@ -311,6 +311,13 @@ Funcion ObtenerLabels(tokens, nlineas, lineas, pointers)
     FinMientras
 FinFuncion
 
+Funcion ref <- ReferenciarMemoria(ptr)
+	ref <- "0x" + ptr
+FinFuncion
+
+Funcion ptr <- DesReferenciarMemoria(ref)
+	ptr <- Subcadena(ref, 3, Longitud(ref))
+FinFuncion
 
 Funcion reiniciomemoria(MEMORIA_CONST, VARIABLES_CONST, MAXINSTRUCIONES_CONST, memoria, pointers, instruccion)
     Para i <- 1 Hasta VARIABLES_CONST Hacer
@@ -358,7 +365,7 @@ Funcion esnumero <- CheckearNumero(num)
 	ListaNumeros = "1234567890"
 	esnumero = Verdadero
 	para j<-1 Hasta Longitud(num)
-		para i<-1 Hasta 9
+		para i<-1 Hasta 10
 			si Subcadena(ListaNumeros, i,i) = Subcadena(num, j,j) Entonces
 				encontrado = 1
 			FinSi
@@ -374,46 +381,51 @@ Funcion syscall(sysc, arg1, arg2, arg3, pointers, memoria)
 	
     syscS <- ConvertirANumero(sysc)
     arg1S <- ConvertirANumero(arg1)
-    i <- 1
 	
-    esnumero = CheckearNumero(arg2)
-    Si esnumero = Verdadero Entonces
+    Si Subcadena(arg2,1,2) = "0x" Entonces
+        arg2S <- ConvertirANumero(DesReferenciarMemoria(arg2))
+        espuntero <- Verdadero
+    SiNo
         arg2S <- ConvertirANumero(arg2)
-    SiNo
-        encontrado = Falso
-        Mientras encontrado = Falso Hacer
-            Si pointers[i,1] = arg2 Entonces
-                arg2S = ConvertirANumero(pointers[i,2])
-                encontrado = Verdadero
-            FinSi
-            i <- i + 1
-        FinMientras
+        espuntero <- Falso
     FinSi
 	
-	i<-1
-	esnumero = CheckearNumero(arg3)
-    Si esnumero = Verdadero Entonces
+	Si Subcadena(arg3,1,2) = "0x" Entonces
+        arg3S <- ConvertirANumero(DesReferenciarMemoria(arg3))
+        espuntero <- Verdadero
+    SiNo
         arg3S <- ConvertirANumero(arg3)
-    SiNo
-        encontrado = Falso
-        Mientras encontrado = Falso Hacer
-            Si pointers[i,1] = arg3 Entonces
-                arg3S = ConvertirANumero(pointers[i,2])
-                encontrado = Verdadero
-            FinSi
-            i <- i + 1
-        FinMientras
+		espuntero <- Verdadero
     FinSi
-	
 	
     Si sysc = "1" Entonces
-		palabra = ""
-		para i<-0 Hasta arg3S-1 Hacer
-			letra = DecodificarAscii(memoria[arg2S+i,1])
-			palabra = palabra + letra
-		FinPara
-		Escribir palabra
+		
+        Si espuntero Entonces
+			
+            palabra = ""
+			
+            Para i <- 0 Hasta arg3S-1 Hacer
+                letra = DecodificarAscii(memoria[arg2S+i,1])
+                palabra = palabra + letra
+            FinPara
+			
+            Escribir palabra
+			
+        SiNo
+			
+            palabra = ""
+            numeroTexto = ConvertirATexto(arg2S)
+			
+            Para i <- 1 Hasta arg3S Hacer
+                palabra = palabra + Subcadena(numeroTexto, i, i)
+            FinPara
+			
+            Escribir palabra
+			
+        FinSi
+		
     FinSi
+	
 FinFuncion
 
 Algoritmo CPU
@@ -443,7 +455,7 @@ Algoritmo CPU
     Definir lineas, tokens, instruccion, pointers Como Cadena
     Definir cantidad, i, nlineas, tam Como Entero
 	
-    nlineas <- 14
+    nlineas <- 100
     typesection = 0
 	locked <- Verdadero
 	
@@ -457,16 +469,17 @@ Algoritmo CPU
     lineas[1] <- ";"
 	
     lineas[2] <- "section .data;"
-    lineas[3] <- "msg db {Hola Mundo}, 0;"
-    lineas[4] <- "msg_len equ msg;"
-    lineas[5] <- "section .text;"
-    lineas[6] <- "global _start;"
-    lineas[7] <- "_start:;"
-    lineas[8] <- "mov eax, 1;"
-    lineas[9] <- "mov ebx, 1;"
-    lineas[10] <- "mov ecx, msg;"
-    lineas[11] <- "mov edx, msg_len;"
-    lineas[12] <- "int 0x80;"
+	lineas[3] <- "wawa db {wawawawaw wawawssssss awawawaw}, 0;"
+    lineas[4] <- "msg db {Hola Mundo}, 0;"
+    lineas[5] <- "msg_len equ msg;"
+    lineas[6] <- "section .text;"
+    lineas[7] <- "global _start;"
+    lineas[8] <- "_start:;"
+	lineas[14] <- "mov eax, 1;"
+	lineas[15] <- "mov ebx, 1;"
+	lineas[16] <- "mov ecx, 10;"
+	lineas[17] <- "mov edx, 4;"
+	lineas[18] <- "int 0x80;"
 	
     cantidad <- Tokenizar(lineas, tokens, nlineas)
 	
@@ -563,16 +576,46 @@ Algoritmo CPU
 			SiNo
 				Segun instruccion[1] Hacer
 					"mov":
+						
 						indice <- Obtener_Registro(instruccion[2])
 						
 						si indice <> -1 Entonces
-							registros[indice] <- instruccion[3]
+							esnumero = CheckearNumero(instruccion[3])
+							
+							Si esnumero = Falso Entonces
+								
+								encontrado = Falso
+								p<-1
+								Mientras encontrado = Falso Hacer
+									si Subcadena(instruccion[3],1,1) <> "[" Entonces
+										Escribir pointers[p,1]
+										Escribir instruccion[3]
+										Si pointers[p,1] = instruccion[3] Entonces
+											aux3 = pointers[p,2]
+											encontrado = Verdadero
+										FinSi
+									SiNo
+										Si pointers[p,1] = Subcadena(instruccion[3], 2, Longitud(instruccion[3])-1) Entonces
+											aux3 = pointers[p,2]
+											encontrado = Verdadero
+										FinSi
+									FinSi
+									
+									p <- p + 1
+								FinMientras
+								
+								si Subcadena(instruccion[3], 1,1) = "[" y Subcadena(instruccion[3],Longitud(instruccion[3]),Longitud(instruccion[3])) = "]" Entonces
+									registros[indice] <- aux3
+								SiNo
+									registros[indice] <- ReferenciarMemoria(aux3)
+								FinSi
+							SiNo
+								registros[indice] <- Instruccion[3] 
+							FinSi
 						FinSi
-						
 						
 						//DebugRegistros(registros)
 					"int":
-						
 						si instruccion[2] = "0x80" Entonces
 							syscall(registros[1], registros[2], registros[3], registros[4], pointers, memoria)
 						FinSi
