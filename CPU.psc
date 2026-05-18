@@ -385,8 +385,8 @@ Algoritmo CPU
     lineas[1] <- ";"
 	
     lineas[2] <- "section .data;"
-    //lineas[3] <- "msg db {Hola Mundo}, 0;"
-    //lineas[4] <- "msg_len equ msg;"
+    lineas[3] <- "msg db {Hola Mundo}, 0;"
+    lineas[4] <- "msg_len equ msg;"
     lineas[5] <- "section .text;"
     lineas[6] <- "global _start;"
     lineas[7] <- "_start:;"
