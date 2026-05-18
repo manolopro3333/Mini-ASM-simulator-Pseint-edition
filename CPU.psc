@@ -28,10 +28,10 @@ FinFuncion
 
 Funcion DebugRegistros(registros)
     Escribir "===== REGISTROS ====="
-    Escribir "eax = " + ConvertirATexto(registros[1])
-    Escribir "ebx = " + ConvertirATexto(registros[2])
-    Escribir "ecx = " + ConvertirATexto(registros[3])
-    Escribir "edx = " + ConvertirATexto(registros[4])
+    Escribir "eax = " + registros[1]
+    Escribir "ebx = " + registros[2]
+    Escribir "ecx = " + registros[3]
+    Escribir "edx = " + registros[4]
     Escribir "====================="
 FinFuncion
 
@@ -354,16 +354,87 @@ Funcion ptr <- BuscarPunteroVariable(variable, pointers)
     FinMientras
 FinFuncion
 
+Funcion esnumero <- CheckearNumero(num) 
+	ListaNumeros = "1234567890"
+	esnumero = Verdadero
+	para j<-1 Hasta Longitud(num)
+		para i<-1 Hasta 9
+			si Subcadena(ListaNumeros, i,i) = Subcadena(num, j,j) Entonces
+				encontrado = 1
+			FinSi
+		FinPara
+		si encontrado <> 1 Entonces
+			esnumero = Falso
+		FinSi
+		encontrado = 0
+	FinPara
+FinFuncion
+
+Funcion syscall(sysc, arg1, arg2, arg3, pointers, memoria)
+	
+    syscS <- ConvertirANumero(sysc)
+    arg1S <- ConvertirANumero(arg1)
+    i <- 1
+	
+    esnumero = CheckearNumero(arg2)
+    Si esnumero = Verdadero Entonces
+        arg2S <- ConvertirANumero(arg2)
+    SiNo
+        encontrado = Falso
+        Mientras encontrado = Falso Hacer
+            Si pointers[i,1] = arg2 Entonces
+                arg2S = ConvertirANumero(pointers[i,2])
+                encontrado = Verdadero
+            FinSi
+            i <- i + 1
+        FinMientras
+    FinSi
+	
+	i<-1
+	esnumero = CheckearNumero(arg3)
+    Si esnumero = Verdadero Entonces
+        arg3S <- ConvertirANumero(arg3)
+    SiNo
+        encontrado = Falso
+        Mientras encontrado = Falso Hacer
+            Si pointers[i,1] = arg3 Entonces
+                arg3S = ConvertirANumero(pointers[i,2])
+                encontrado = Verdadero
+            FinSi
+            i <- i + 1
+        FinMientras
+    FinSi
+	
+	
+    Si sysc = "1" Entonces
+		palabra = ""
+		para i<-0 Hasta arg3S-1 Hacer
+			letra = DecodificarAscii(memoria[arg2S+i,1])
+			palabra = palabra + letra
+		FinPara
+		Escribir palabra
+    FinSi
+FinFuncion
 
 Algoritmo CPU
+	
+	// REGISTROS:
+	// eax = syscall
+	// ebx = 1° argumento
+	// ecx = 2° argumento
+	// edx = 3° argumento
+	
+	
+	// eip = seguimiento de instrucciones
+	
 	
     MEMORIA_CONST = 1024
     VARIABLES_CONST = 64
     MAXINSTRUCIONES_CONST = 6
 	
-    Definir rip Como Cadena
-    Definir registros, eip Como Entero
-	
+    Definir rip, registros Como Cadena
+    Definir eip Como Entero
+
     Dimension registros[4]
 	
     Definir memoria Como Entero
@@ -374,6 +445,7 @@ Algoritmo CPU
 	
     nlineas <- 14
     typesection = 0
+	locked <- Verdadero
 	
     Dimension lineas[nlineas]
     Dimension tokens[MEMORIA_CONST/2]
@@ -390,12 +462,11 @@ Algoritmo CPU
     lineas[5] <- "section .text;"
     lineas[6] <- "global _start;"
     lineas[7] <- "_start:;"
-    lineas[8] <- "mov eax, 4;"
+    lineas[8] <- "mov eax, 1;"
     lineas[9] <- "mov ebx, 1;"
-    lineas[11] <- "int 0x80;"
-    lineas[12] <- "mov eax, 1;"
-    lineas[13] <- "mov ebx, 0;"
-    lineas[14] <- "int 0x80;"
+    lineas[10] <- "mov ecx, msg;"
+    lineas[11] <- "mov edx, msg_len;"
+    lineas[12] <- "int 0x80;"
 	
     cantidad <- Tokenizar(lineas, tokens, nlineas)
 	
@@ -406,27 +477,38 @@ Algoritmo CPU
 	
     // PRUEBAS
 	
-    DebugTokens(tokens, cantidad)
-    DebugPointers(pointers, VARIABLES_CONST)
-    DebugMemoria(memoria, 1, 20)
+    //DebugTokens(tokens, cantidad)
+    //DebugPointers(pointers, VARIABLES_CONST)
+    //DebugMemoria(memoria, 1, 20)
 	
 	
     Para eip <- 1 Hasta nlineasReal Hacer
 		
         Separar_Instruccion(tokens, instruccion, eip, cantidad)
 		
-        DebugInstruccion(instruccion)
+        //DebugInstruccion(instruccion)
 		
         Si typesection = 2 Entonces
+			
+			
+			// Instrucciones posibles
+			
+			// db = Strings
+			// dw, dq y dt ints,
+			// equ ver el tamaño de una variable
+			
+			// msg db hola mundo, 0 / significa en msg define hola mundo, acabando con un 0
+			// 0 = fin de una string
+			// 1 = salto de linea
 			
             Segun instruccion[2] Hacer
 				
                 "db":
                     puntero = asignar_espacio_memoria_car(instruccion[3], Longitud(instruccion[3]), memoria)
                     asignarvariable(instruccion[1], ConvertirATexto(puntero), pointers)
-                    DebugPointers(pointers, VARIABLES_CONST)
-                    DebugMemoria(memoria, 1, 20)
-                    DebugStringMemoria(memoria, puntero)
+                    //DebugPointers(pointers, VARIABLES_CONST)
+                    //DebugMemoria(memoria, 1, 20)
+                    //DebugStringMemoria(memoria, puntero)
 					
                 "dw":
                     puntero = asignar_espacio_memoria_int(instruccion[3], memoria)
@@ -458,7 +540,7 @@ Algoritmo CPU
                         auxiliar1 <- auxiliar1 + 1
                     FinMientras
 					
-                    longit = auxiliar1 - 1
+                    longit = auxiliar1
 					
                     puntero = asignar_espacio_memoria_int(longit, memoria)
                     asignarvariable(instruccion[1], ConvertirATexto(puntero), pointers)
@@ -469,22 +551,34 @@ Algoritmo CPU
 		
         Si typesection = 1 Entonces
 			
-            Segun instruccion[1] Hacer
+			si locked = Verdadero
+				Segun instruccion[1] Hacer
+					"global":
+						rip = instruccion[2] + ":"
+				FinSegun
 				
-                "global":
-                    rip = "1"
-					
-                "mov":
-                    indice <- Obtener_Registro(instruccion[2])
-					
-                    Si indice <> -1 Entonces
-                        registros[indice] <- ConvertirANumero(instruccion[3])
-                    FinSi
-					
-                    DebugRegistros(registros)
-					
-            FinSegun
-			
+				si instruccion[1] = rip Entonces
+					locked = Falso
+				FinSi
+			SiNo
+				Segun instruccion[1] Hacer
+					"mov":
+						indice <- Obtener_Registro(instruccion[2])
+						
+						si indice <> -1 Entonces
+							registros[indice] <- instruccion[3]
+						FinSi
+						
+						
+						//DebugRegistros(registros)
+					"int":
+						
+						si instruccion[2] = "0x80" Entonces
+							syscall(registros[1], registros[2], registros[3], registros[4], pointers, memoria)
+						FinSi
+				FinSegun
+			FinSi
+
         FinSi
 		
         Si instruccion[1] = "section" Entonces
