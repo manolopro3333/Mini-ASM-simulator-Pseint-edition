@@ -26,16 +26,6 @@ Funcion DebugInstruccion(instruccion)
 FinFuncion
 
 
-Funcion DebugRegistros(registros)
-    Escribir "===== REGISTROS ====="
-    Escribir "eax = " + registros[1]
-    Escribir "ebx = " + registros[2]
-    Escribir "ecx = " + registros[3]
-    Escribir "edx = " + registros[4]
-    Escribir "====================="
-FinFuncion
-
-
 Funcion DebugPointers(pointers, VARIABLES_CONST)
     Escribir "===== POINTERS ====="
 	
@@ -53,7 +43,16 @@ Funcion DebugMemoria(memoria, inicio, final)
     Escribir "===== MEMORIA ====="
 	
     Para i <- inicio Hasta final Hacer
-        Escribir "[" + ConvertirATexto(i) + "] valor=" + ConvertirATexto(memoria[i,1]) + " usado=" + ConvertirATexto(memoria[i,2])
+        Si memoria[i,3] = 0 Entonces
+            tipostr <- "INT"
+        FinSi
+        Si memoria[i,3] = 1 Entonces
+            tipostr <- "ASCII"
+        FinSi
+        Si memoria[i,3] = 2 Entonces
+            tipostr <- "PTR"
+        FinSi
+        Escribir "[" + ConvertirATexto(i) + "] valor=" + ConvertirATexto(memoria[i,1]) + " usado=" + ConvertirATexto(memoria[i,2]) + " tipo=" + tipostr
     FinPara
 	
     Escribir "==================="
@@ -138,22 +137,6 @@ Funcion cantidad <- Tokenizar(lineas, tokens, nlineas)
 FinFuncion
 
 
-Funcion indice <- Obtener_Registro(registro)
-    Segun registro Hacer
-        "eax":
-            indice <- 1
-        "ebx":
-            indice <- 2
-        "ecx":
-            indice <- 3
-        "edx":
-            indice <- 4
-        De Otro Modo:
-            indice <- -1
-    FinSegun
-FinFuncion
-
-
 Funcion Separar_instruccion(tokens, instruccion, index, cantidad)
     aux1 <- Verdadero
 	
@@ -222,6 +205,43 @@ Funcion carac <- DecodificarAscii(codigo)
     FinSi
 FinFuncion
 
+Funcion ptr <- ReservearMemoria(cantidad,memoria)
+	
+	Encontrado <- Falso
+	ioffset <- 1
+	
+	Mientras Encontrado = Falso Hacer
+		
+		valido = 1
+		
+        Si memoria[ioffset,2] = 0 Entonces
+            Para l <- 1 Hasta cantidad Hacer
+                Si l = cantidad Y valido = cantidad  Entonces
+                    encontrado = Verdadero
+                    ptr <- ioffset
+					
+                    Para k <- 0 Hasta cantidad - 1 Hacer
+						
+						memoria[ptr+k,1] = 0
+						memoria[ptr+k,2] = 1
+						memoria[ptr+k,3] = 0
+						
+                    FinPara
+                FinSi
+				
+                Si memoria[ioffset+l,2] = 0 Y valido <> -1 Entonces
+                    valido = valido + 1
+                SiNo
+                    valido = -1
+                FinSi
+            FinPara
+        FinSi
+		
+        ioffset <- ioffset + 1
+		
+	FinMientras
+FinFuncion
+
 
 Funcion ptr <- asignar_espacio_memoria_car(mensaje, longitudmensaje, memoria)
     Definir Carac Como Entero
@@ -242,10 +262,12 @@ Funcion ptr <- asignar_espacio_memoria_car(mensaje, longitudmensaje, memoria)
                         Si k = longitudmensaje Entonces
                             memoria[ptr+k,1] = 0
                             memoria[ptr+k,2] = 1
+							memoria[ptr+k,3] = 1
                         SiNo
                             Carac <- CodificarAscii(Subcadena(mensaje, k+1, k+1))
                             memoria[ptr+k,1] = Carac
                             memoria[ptr+k,2] = 1
+							memoria[ptr+k,3] = 1
                         FinSi
                     FinPara
                 FinSi
@@ -271,8 +293,9 @@ Funcion ptr <- asignar_espacio_memoria_int(mensaje, memoria)
         Si memoria[ioffset,2] = 0 Entonces
             ptr <- ioffset
             encontrado = Verdadero
-            memoria[ioffset,1] = mensaje
+            memoria[ioffset,1] = ConvertirANumero(mensaje)
             memoria[ioffset,2] = 1
+			memoria[ioffset,3] = 0
         SiNo
             ioffset <- ioffset + 1
         FinSi
@@ -311,13 +334,14 @@ Funcion ObtenerLabels(tokens, nlineas, lineas, pointers)
     FinMientras
 FinFuncion
 
-Funcion ref <- ReferenciarMemoria(ptr)
-	ref <- "0x" + ptr
+
+Funcion ReEscribirBytes(elcarac, puntero, memoria)
+	si memoria[puntero,2] <> 0 Entonces
+		memoria[puntero,1] <- CodificarAscii(elcarac)
+	FinSi
 FinFuncion
 
-Funcion ptr <- DesReferenciarMemoria(ref)
-	ptr <- Subcadena(ref, 3, Longitud(ref))
-FinFuncion
+
 
 Funcion reiniciomemoria(MEMORIA_CONST, VARIABLES_CONST, MAXINSTRUCIONES_CONST, memoria, pointers, instruccion)
     Para i <- 1 Hasta VARIABLES_CONST Hacer
@@ -328,6 +352,12 @@ Funcion reiniciomemoria(MEMORIA_CONST, VARIABLES_CONST, MAXINSTRUCIONES_CONST, m
     Para i <- 1 Hasta MAXINSTRUCIONES_CONST Hacer
         instruccion[i] = "0"
     FinPara
+	
+	Para i <- 1 Hasta MEMORIA_CONST Hacer
+		memoria[i,1] = 0
+		memoria[i,2] = 0
+		memoria[i,3] = 0
+	FinPara
 FinFuncion
 
 
@@ -348,12 +378,32 @@ FinFuncion
 
 
 Funcion ptr <- BuscarPunteroVariable(variable, pointers)
+	
+	// variable puede se como msg o msg+10 
+	
     encontrado = Falso
     ioffset <- 1
+	mas <- Falso
+	num = "0"
+	temp <- variable
+	
+	para i<-1 Hasta Longitud(temp) Hacer
+		si mas Entonces
+			num = num + Subcadena(temp,i,i)
+		FinSi
+		si mas = Falso Entonces
+			si Subcadena(temp, i,i) = "+" Entonces
+				variable = Subcadena(temp,1,i-1)
+				mas = Verdadero
+			FinSi
+		FinSi
+	FinPara
+	
+	
 	
     Mientras encontrado = Falso Hacer
         Si pointers[ioffset,1] = variable Entonces
-            ptr <- ConvertirANumero(pointers[ioffset,2])
+            ptr <- ConvertirANumero(pointers[ioffset,2]) + ConvertirANumero(num)
             encontrado = Verdadero
         FinSi
 		
@@ -382,49 +432,29 @@ Funcion syscall(sysc, arg1, arg2, arg3, pointers, memoria)
     syscS <- ConvertirANumero(sysc)
     arg1S <- ConvertirANumero(arg1)
 	
-    Si Subcadena(arg2,1,2) = "0x" Entonces
-        arg2S <- ConvertirANumero(DesReferenciarMemoria(arg2))
-        espuntero <- Verdadero
-    SiNo
-        arg2S <- ConvertirANumero(arg2)
-        espuntero <- Falso
-    FinSi
 	
-	Si Subcadena(arg3,1,2) = "0x" Entonces
-        arg3S <- ConvertirANumero(DesReferenciarMemoria(arg3))
-        espuntero <- Verdadero
-    SiNo
-        arg3S <- ConvertirANumero(arg3)
-		espuntero <- Verdadero
-    FinSi
+	arg2S <- ConvertirANumero(arg2)
 	
-    Si sysc = "1" Entonces
-		
-        Si espuntero Entonces
+	
+	arg3S <- ConvertirANumero(arg3)
+	
+	
+    Segun sysc Hacer
+		"3": 
 			
-            palabra = ""
+		"4":
 			
-            Para i <- 0 Hasta arg3S-1 Hacer
-                letra = DecodificarAscii(memoria[arg2S+i,1])
-                palabra = palabra + letra
-            FinPara
+			palabra = ""
 			
-            Escribir palabra
+			Para i <- 0 Hasta arg3S-1 Hacer
+				letra = DecodificarAscii(memoria[arg2S+i,1])
+				palabra = palabra + letra
+			FinPara
 			
-        SiNo
+			Escribir palabra
 			
-            palabra = ""
-            numeroTexto = ConvertirATexto(arg2S)
-			
-            Para i <- 1 Hasta arg3S Hacer
-                palabra = palabra + Subcadena(numeroTexto, i, i)
-            FinPara
-			
-            Escribir palabra
-			
-        FinSi
-		
-    FinSi
+    FinSegun
+	
 	
 FinFuncion
 
@@ -432,9 +462,9 @@ Algoritmo CPU
 	
 	// REGISTROS:
 	// eax = syscall
-	// ebx = 1° argumento
-	// ecx = 2° argumento
-	// edx = 3° argumento
+	// ebx = 1ï¿½ argumento
+	// ecx = 2ï¿½ argumento
+	// edx = 3ï¿½ argumento
 	
 	
 	// eip = seguimiento de instrucciones
@@ -444,13 +474,15 @@ Algoritmo CPU
     VARIABLES_CONST = 64
     MAXINSTRUCIONES_CONST = 6
 	
-    Definir rip, registros Como Cadena
+    Definir rip Como Cadena
     Definir eip Como Entero
-
-    Dimension registros[4]
+	
+	// TIPO_INT = 0
+	// TIPO_ASCII = 1
+	// TIPO_POINTER = 2
 	
     Definir memoria Como Entero
-    Dimension memoria[MEMORIA_CONST,2]
+    Dimension memoria[MEMORIA_CONST,3]
 	
     Definir lineas, tokens, instruccion, pointers Como Cadena
     Definir cantidad, i, nlineas, tam Como Entero
@@ -468,24 +500,47 @@ Algoritmo CPU
 	
     lineas[1] <- ";"
 	
-    lineas[2] <- "section .data;"
-	lineas[3] <- "wawa db {wawawawaw wawawssssss awawawaw}, 0;"
-    lineas[4] <- "msg db {Hola Mundo}, 0;"
-    lineas[5] <- "msg_len equ msg;"
-    lineas[6] <- "section .text;"
-    lineas[7] <- "global _start;"
-    lineas[8] <- "_start:;"
-	lineas[14] <- "mov eax, 1;"
-	lineas[15] <- "mov ebx, 1;"
-	lineas[16] <- "mov ecx, 10;"
-	lineas[17] <- "mov edx, 4;"
-	lineas[18] <- "int 0x80;"
+	lineas[2] <- "section .data;"
+	lineas[3] <- "msg db {Hola Mundo}, 10;"
+	lineas[4] <- "msg_len equ msg;"
+	
+	lineas[5] <- "section .text;"
+	lineas[6] <- "global _start;"
+	lineas[7] <- "_start:;"
+	
+	lineas[8] <- "mov eax, 4;"
+	lineas[9] <- "mov ebx, 1;"
+	lineas[10] <- "mov ecx, msg;"
+	lineas[11] <- "mov edx, msg_len;"
+	lineas[12] <- "int 0x80;"
+	
+	lineas[13] <- "mov byte [msg], {A};"
+	lineas[14] <- "mov byte [msg+1], {d};"
+	lineas[15] <- "mov byte [msg+2], {i};"
+	lineas[16] <- "mov byte [msg+3], {o};"
+	lineas[17] <- "mov byte [msg+4], {s};"
+	lineas[18] <- "mov byte [msg+5], { };"
+	
+	lineas[19] <- "mov eax, 4;"
+	lineas[20] <- "mov ebx, 1;"
+	lineas[21] <- "mov ecx, msg;"
+	lineas[22] <- "mov edx, msg_len;"
+	lineas[23] <- "int 0x80;"
 	
     cantidad <- Tokenizar(lineas, tokens, nlineas)
 	
     nlineasReal = Numero_Lineas(tokens, cantidad)
 	
     ObtenerLabels(tokens, nlineasReal, lineas, pointers)
+	
+	puntero <- asignar_espacio_memoria_int("0", memoria)
+	asignarvariable("eax", ConvertirATexto(puntero), pointers)
+	puntero <- asignar_espacio_memoria_int("0", memoria)
+	asignarvariable("ebx", ConvertirATexto(puntero), pointers)
+	puntero <- asignar_espacio_memoria_int("0", memoria)
+	asignarvariable("ecx", ConvertirATexto(puntero), pointers)
+	puntero <- asignar_espacio_memoria_int("0", memoria)
+	asignarvariable("edx", ConvertirATexto(puntero), pointers)
 	
 	
     // PRUEBAS
@@ -501,6 +556,10 @@ Algoritmo CPU
 		
         //DebugInstruccion(instruccion)
 		
+		//DebugMemoria(memoria, 1, 20)
+		//DebugStringMemoria(memoria, puntero)
+		//DebugPointers(pointers, VARIABLES_CONST)
+		
         Si typesection = 2 Entonces
 			
 			
@@ -508,7 +567,7 @@ Algoritmo CPU
 			
 			// db = Strings
 			// dw, dq y dt ints,
-			// equ ver el tamaño de una variable
+			// equ ver el tamaï¿½o de una variable
 			
 			// msg db hola mundo, 0 / significa en msg define hola mundo, acabando con un 0
 			// 0 = fin de una string
@@ -519,9 +578,6 @@ Algoritmo CPU
                 "db":
                     puntero = asignar_espacio_memoria_car(instruccion[3], Longitud(instruccion[3]), memoria)
                     asignarvariable(instruccion[1], ConvertirATexto(puntero), pointers)
-                    //DebugPointers(pointers, VARIABLES_CONST)
-                    //DebugMemoria(memoria, 1, 20)
-                    //DebugStringMemoria(memoria, puntero)
 					
                 "dw":
                     puntero = asignar_espacio_memoria_int(instruccion[3], memoria)
@@ -555,7 +611,7 @@ Algoritmo CPU
 					
                     longit = auxiliar1
 					
-                    puntero = asignar_espacio_memoria_int(longit, memoria)
+                    puntero = asignar_espacio_memoria_int(ConvertirATexto(longit), memoria)
                     asignarvariable(instruccion[1], ConvertirATexto(puntero), pointers)
 					
             FinSegun
@@ -576,53 +632,82 @@ Algoritmo CPU
 			SiNo
 				Segun instruccion[1] Hacer
 					"mov":
-						
-						indice <- Obtener_Registro(instruccion[2])
-						
-						si indice <> -1 Entonces
-							esnumero = CheckearNumero(instruccion[3])
+						si instruccion[2] = "byte" Entonces
+							si Subcadena(instruccion[3],1,1) = "[" y Subcadena(instruccion[3],Longitud(instruccion[3]),Longitud(instruccion[3])) = "]" Entonces
+								puntero = BuscarPunteroVariable(Subcadena(instruccion[3],2,Longitud(instruccion[3])-1), pointers)
+								memoria[puntero,1] = CodificarAscii(instruccion[4])
+								memoria[puntero,3] = 2
+							FinSi
+						SiNo
+							puntero = BuscarPunteroVariable(instruccion[2], pointers)
 							
+							esnumero = CheckearNumero(instruccion[3])
 							Si esnumero = Falso Entonces
 								
 								encontrado = Falso
-								p<-1
+								p <- 1
 								Mientras encontrado = Falso Hacer
+									
 									si Subcadena(instruccion[3],1,1) <> "[" Entonces
-										Escribir pointers[p,1]
-										Escribir instruccion[3]
+										
 										Si pointers[p,1] = instruccion[3] Entonces
-											aux3 = pointers[p,2]
+											aux3 = ConvertirANumero(pointers[p,2])
 											encontrado = Verdadero
 										FinSi
 									SiNo
-										Si pointers[p,1] = Subcadena(instruccion[3], 2, Longitud(instruccion[3])-1) Entonces
-											aux3 = pointers[p,2]
+										nombrevar <- Subcadena(instruccion[3], 2, Longitud(instruccion[3])-1)
+										Si pointers[p,1] = nombrevar Entonces
+											aux3 = ConvertirANumero(pointers[p,2])
 											encontrado = Verdadero
 										FinSi
+										
 									FinSi
-									
 									p <- p + 1
+									
 								FinMientras
 								
-								si Subcadena(instruccion[3], 1,1) = "[" y Subcadena(instruccion[3],Longitud(instruccion[3]),Longitud(instruccion[3])) = "]" Entonces
-									registros[indice] <- aux3
+								
+								si Subcadena(instruccion[3],1,1) = "[" Y Subcadena(instruccion[3],Longitud(instruccion[3]),Longitud(instruccion[3])) = "]" Entonces
+									
+									memoria[puntero, 1] <- memoria[aux3,1]
+									memoria[puntero, 3] <- memoria[aux3,3]
+									aux4 = Verdadero
+									
 								SiNo
-									registros[indice] <- ReferenciarMemoria(aux3)
+									
+									memoria[puntero,1] <- aux3
+									memoria[puntero,3] <- 2
 								FinSi
+								
 							SiNo
-								registros[indice] <- Instruccion[3] 
+								
+								memoria[puntero, 1] <- ConvertirANumero(instruccion[3])
+								
 							FinSi
 						FinSi
 						
-						//DebugRegistros(registros)
+						
+						
 					"int":
 						si instruccion[2] = "0x80" Entonces
-							syscall(registros[1], registros[2], registros[3], registros[4], pointers, memoria)
+							ptr_eax <- BuscarPunteroVariable("eax", pointers)
+							ptr_ebx <- BuscarPunteroVariable("ebx", pointers)
+							ptr_ecx <- BuscarPunteroVariable("ecx", pointers)
+							ptr_edx <- BuscarPunteroVariable("edx", pointers)
+							syscall(ConvertirATexto(memoria[ptr_eax,1]), ConvertirATexto(memoria[ptr_ebx,1]), ConvertirATexto(memoria[ptr_ecx,1]), ConvertirATexto(memoria[ptr_edx,1]), pointers, memoria)
 						FinSi
 				FinSegun
 			FinSi
-
+			
         FinSi
+		
+		
+		si typesection = 3 Entonces
+			si instruccion[2] = "resb" Entonces
+				puntero <- ReservearMemoria(ConvertirANumero(Instruccion[3]),memoria)
+				asignarvariable(instruccion[1], ConvertirATexto(puntero), pointers)
+			FinSi
+		FinSi
 		
         Si instruccion[1] = "section" Entonces
             Si instruccion[2] = ".data" Entonces
@@ -632,7 +717,12 @@ Algoritmo CPU
             Si instruccion[2] = ".text" Entonces
                 typesection = 1
             FinSi
+			
+			si instruccion[2] = ".bss" Entonces
+				typesection = 3
+			FinSi
         FinSi
+		
 		
         Para i <- 1 Hasta 6 Hacer
             instruccion[i] = ""
