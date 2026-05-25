@@ -441,7 +441,17 @@ Funcion syscall(sysc, arg1, arg2, arg3, pointers, memoria)
 	
     Segun sysc Hacer
 		"3": 
-			
+			si arg1S = 0 Entonces
+				Leer buffer
+			FinSi
+
+			j<-0
+			para i<-1 Hasta arg3S Hacer
+				ascii = Subcadena(buffer, i, i)
+				asciiC = CodificarAscii(ascii)
+				memoria[arg2S+j,1] <- asciiC
+				j<- j + 1
+			FinPara
 		"4":
 			
 			palabra = ""
@@ -462,9 +472,9 @@ Algoritmo CPU
 	
 	// REGISTROS:
 	// eax = syscall
-	// ebx = 1ï¿½ argumento
-	// ecx = 2ï¿½ argumento
-	// edx = 3ï¿½ argumento
+	// ebx = 1° argumento
+	// ecx = 2° argumento
+	// edx = 3° argumento
 	
 	
 	// eip = seguimiento de instrucciones
@@ -500,31 +510,23 @@ Algoritmo CPU
 	
     lineas[1] <- ";"
 	
-	lineas[2] <- "section .data;"
-	lineas[3] <- "msg db {Hola Mundo}, 10;"
-	lineas[4] <- "msg_len equ msg;"
+	lineas[2] <- "section .bss;"
+	lineas[3] <- "buffer resb 20;"
 	
 	lineas[5] <- "section .text;"
 	lineas[6] <- "global _start;"
 	lineas[7] <- "_start:;"
 	
-	lineas[8] <- "mov eax, 4;"
-	lineas[9] <- "mov ebx, 1;"
-	lineas[10] <- "mov ecx, msg;"
-	lineas[11] <- "mov edx, msg_len;"
+	lineas[8] <- "mov eax, 3;"
+	lineas[9] <- "mov ebx, 0;"
+	lineas[10] <- "mov ecx, buffer;"
+	lineas[11] <- "mov edx, 2;"
 	lineas[12] <- "int 0x80;"
-	
-	lineas[13] <- "mov byte [msg], {A};"
-	lineas[14] <- "mov byte [msg+1], {d};"
-	lineas[15] <- "mov byte [msg+2], {i};"
-	lineas[16] <- "mov byte [msg+3], {o};"
-	lineas[17] <- "mov byte [msg+4], {s};"
-	lineas[18] <- "mov byte [msg+5], { };"
 	
 	lineas[19] <- "mov eax, 4;"
 	lineas[20] <- "mov ebx, 1;"
-	lineas[21] <- "mov ecx, msg;"
-	lineas[22] <- "mov edx, msg_len;"
+	lineas[21] <- "mov ecx, buffer;"
+	lineas[22] <- "mov edx, 20;"
 	lineas[23] <- "int 0x80;"
 	
     cantidad <- Tokenizar(lineas, tokens, nlineas)
@@ -554,11 +556,11 @@ Algoritmo CPU
 		
         Separar_Instruccion(tokens, instruccion, eip, cantidad)
 		
-        //DebugInstruccion(instruccion)
+        DebugInstruccion(instruccion)
 		
-		//DebugMemoria(memoria, 1, 20)
-		//DebugStringMemoria(memoria, puntero)
-		//DebugPointers(pointers, VARIABLES_CONST)
+		DebugMemoria(memoria, 1, 20)
+		DebugStringMemoria(memoria, puntero)
+		DebugPointers(pointers, VARIABLES_CONST)
 		
         Si typesection = 2 Entonces
 			
@@ -567,7 +569,7 @@ Algoritmo CPU
 			
 			// db = Strings
 			// dw, dq y dt ints,
-			// equ ver el tamaï¿½o de una variable
+			// equ ver el tamaño de una variable
 			
 			// msg db hola mundo, 0 / significa en msg define hola mundo, acabando con un 0
 			// 0 = fin de una string
@@ -645,13 +647,29 @@ Algoritmo CPU
 							Si esnumero = Falso Entonces
 								
 								encontrado = Falso
+								suma = falso
+								num = "0"
 								p <- 1
 								Mientras encontrado = Falso Hacer
 									
 									si Subcadena(instruccion[3],1,1) <> "[" Entonces
+										instr = instruccion[3]
+										para i<-1 Hasta Longitud(instr) Hacer
+											si suma Entonces
+												num = Subcadena(instr, i,i)
+											FinSi
+											si suma = Falso Entonces
+												si Subcadena(instr,i,i) = "+" Entonces
+													suma = Verdadero
+													instrc = Subcadena(instr, 1, i-1)
+												FinSi
+											FinSi
+										FinPara
 										
-										Si pointers[p,1] = instruccion[3] Entonces
-											aux3 = ConvertirANumero(pointers[p,2])
+										
+										
+										Si pointers[p,1] = instr o pointers[p,1] = instrc Entonces
+											aux3 = ConvertirANumero(pointers[p,2]) + ConvertirANumero(num)
 											encontrado = Verdadero
 										FinSi
 									SiNo

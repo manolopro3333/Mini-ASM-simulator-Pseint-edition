@@ -48,8 +48,31 @@ El codigo usa tres secciones:
 
 ### Syscall actual
 
+- `eax = 3`: lee texto desde consola y lo guarda en memoria.
+  - `ebx = 0` para leer input de teclado.
+  - `ecx` apunta al buffer donde se escriben los caracteres.
+  - `edx` se usa como longitud maxima del buffer.
 - `eax = 4`: imprime `edx` bytes desde la direccion `ecx`.
   - `ebx = 1` para stdout.
+
+### Ejemplo 3: Leer input en un buffer
+
+```text
+lineas[2] <- "section .bss;"
+lineas[3] <- "buffer resb 20;"
+
+lineas[4] <- "section .text;"
+lineas[5] <- "global _start;"
+lineas[6] <- "_start:;"
+
+lineas[7] <- "mov eax, 3;"
+lineas[8] <- "mov ebx, 0;"
+lineas[9] <- "mov ecx, buffer;"
+lineas[10] <- "mov edx, 20;"
+lineas[11] <- "int 0x80;"
+```
+
+> Nota: esta entrada copia los caracteres tal cual en memoria; si luego quieres imprimirlos, usa `eax = 4` con el mismo `buffer`.
 
 ## Ejemplo 1: Hola Mundo
 
