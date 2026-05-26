@@ -27,6 +27,7 @@ El codigo usa tres secciones:
 
 - Las cadenas y caracteres se escriben entre `{}` para poder incluir espacios.
 - Las etiquetas llevan `:` al final (ej: `_start:`).
+- Dentro de `[]` se admiten desplazamientos con `+N` (ej: `[msg+1]`).
 - Se recomienda declarar `global _start` y luego la etiqueta `_start:`.
 
 ### Instrucciones soportadas
@@ -37,6 +38,9 @@ El codigo usa tres secciones:
 - `resb`: reserva N bytes en `.bss`.
 - `mov`: asignacion a registros o memoria.
 - `mov byte [var], {A}`: escribe un caracter en memoria.
+- `mov byte [var+N], {A}`: escribe un caracter en un offset dentro de la misma variable.
+- `mov eax, [msg]`: Escribira lo que almacene msg en eax
+- `mov [msg], [eax]`: Almacenara lo que contenga eax en msg
 - `int 0x80`: syscall.
 
 ### Registros
@@ -73,6 +77,8 @@ lineas[11] <- "int 0x80;"
 ```
 
 > Nota: esta entrada copia los caracteres tal cual en memoria; si luego quieres imprimirlos, usa `eax = 4` con el mismo `buffer`.
+
+> Nota 2: en escrituras como `[msg]`, el apunta al  byte respecto a `msg`.
 
 ## Ejemplo 1: Hola Mundo
 
