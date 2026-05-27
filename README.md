@@ -42,6 +42,7 @@ El codigo usa tres secciones:
 - `mov eax, [msg]`: Escribira lo que almacene msg en eax
 - `mov [msg], [eax]`: Almacenara lo que contenga eax en msg
 - `int 0x80`: syscall.
+ - `xchg`: intercambia valores entre dos registros o entre un registro y memoria (ej: `xchg eax, ebx` si eax vale 1 y ebx vale 2 ahora seran al contrario).
 
 ### Registros
 
@@ -49,6 +50,13 @@ El codigo usa tres secciones:
 - `ebx`: arg1.
 - `ecx`: arg2.
 - `edx`: arg3.
+
+### Subregistros (8-bit)
+
+- `al`: byte menos significativo de `eax`.
+- `bl`: byte menos significativo de `ebx`.
+- `cl`: byte menos significativo de `ecx`.
+- `dl`: byte menos significativo de `edx`.
 
 ### Syscall actual
 
